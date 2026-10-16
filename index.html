@@ -163,7 +163,7 @@
                         </div>
                     </div>
 
-                    <!-- Gewichtsangaben inkl. Müll -->
+                    <!-- Gewichtsangaben -->
                     <div class="bg-red-50/40 p-4 rounded-2xl border border-red-100 space-y-4">
                         <h3 class="text-sm font-bold text-red-900 flex items-center space-x-2">
                             <i class="fa-solid fa-scale-balanced text-red-600"></i>
@@ -190,7 +190,7 @@
                     </div>
 
                     <!-- Lieferant Dropdown, Versandort, Lkw-Nr -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label for="lieferant" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Lieferant</label>
                             <select id="lieferant" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-red-600">
@@ -241,6 +241,10 @@
                         <div>
                             <label for="lkw_nr" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Lkw-Nr.</label>
                             <input type="text" id="lkw_nr" placeholder="z.B. DA-EA-619" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-600">
+                        </div>
+                        <div>
+                            <label for="wechselbruecke_nr" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Wechselbrücke</label>
+                            <input type="text" id="wechselbruecke_nr" placeholder="z.B. WB-4482" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-600">
                         </div>
                     </div>
 
@@ -357,7 +361,7 @@
                     </div>
                 </div>
 
-                <!-- Datum & Gewichte (inkl. Müll) -->
+                <!-- Datum & Gewichte -->
                 <div class="grid grid-cols-2 border border-slate-900 text-sm">
                     <div class="p-3 border-r border-slate-900 flex flex-col justify-between bg-slate-50/30">
                         <div>
@@ -399,6 +403,10 @@
                     <div class="p-2.5 flex justify-between">
                         <span class="font-bold text-slate-600 text-xs">Lkw-Nr.:</span>
                         <span id="prev-lkw" class="font-black text-base tracking-wide">--</span>
+                    </div>
+                    <div class="p-2.5 flex justify-between">
+                        <span class="font-bold text-slate-600 text-xs">Wechselbrücke:</span>
+                        <span id="prev-wechselbruecke" class="font-black text-base tracking-wide">--</span>
                     </div>
                 </div>
 
@@ -466,7 +474,7 @@
 
     <!-- JavaScript Logik -->
     <script>
-        let historyData = JSON.parse(localStorage.getItem('texaid_wiegescheine_darmstadt_v4') || '[]');
+        let historyData = JSON.parse(localStorage.getItem('texaid_wiegescheine_darmstadt_v5') || '[]');
         
         function generateNextSpNr() {
             if (historyData.length === 0) return '50040';
@@ -675,6 +683,7 @@
             document.getElementById('prev-lieferant').textContent = document.getElementById('lieferant').value || '-';
             document.getElementById('prev-versandort').textContent = document.getElementById('versandort').value;
             document.getElementById('prev-lkw').textContent = document.getElementById('lkw_nr').value || '-';
+            document.getElementById('prev-wechselbruecke').textContent = document.getElementById('wechselbruecke_nr').value || '-';
 
             const sigImg = document.getElementById('prev-sig-img');
             const sigPlaceholder = document.getElementById('prev-sig-placeholder');
@@ -717,20 +726,21 @@
                 bewegung: document.querySelector('input[name="bewegung"]:checked').value,
                 datum: document.getElementById('datum').value,
                 uhrzeit: document.getElementById('uhrzeit').value,
-                brutto: document.getElementById('brutto').value || '0',
-                tara: document.getElementById('tara').value || '0',
+                brutto: document.getElementById('brutto').value,
+                tara: document.getElementById('tara').value,
                 muell: document.getElementById('muell').value || '0',
                 netto: Math.max(0, bruttoVal - taraVal - muellVal),
                 lieferant: document.getElementById('lieferant').value,
                 versandort: document.getElementById('versandort').value,
                 lkw_nr: document.getElementById('lkw_nr').value,
+                wechselbruecke_nr: document.getElementById('wechselbruecke_nr').value,
                 positions: [...positions],
                 signature: hasSignature ? canvas.toDataURL() : null,
                 createdAt: new Date().toLocaleString()
             };
 
             historyData.unshift(record);
-            localStorage.setItem('texaid_wiegescheine_darmstadt_v4', JSON.stringify(historyData));
+            localStorage.setItem('texaid_wiegescheine_darmstadt_v5', JSON.stringify(historyData));
             updateHistoryBadge();
             renderHistoryList();
 
@@ -803,7 +813,7 @@
             const datum = document.getElementById('prev-datum').textContent;
             const lieferant = document.getElementById('lieferant').value;
             const lkw = document.getElementById('lkw_nr').value;
-            const muell = document.getElementById('prev-muell').textContent;
+            const wb = document.getElementById('wechselbruecke_nr').value;
             const netto = document.getElementById('prev-netto').textContent;
 
             const subject = encodeURIComponent(`TEXAID Wiegeschein SP-Nr. ${spNr} - ${lieferant}`);
@@ -814,7 +824,7 @@
                 `Datum: ${datum}\n` +
                 `Lieferant: ${lieferant}\n` +
                 `Lkw-Nr: ${lkw}\n` +
-                `Müll: ${muell}\n` +
+                `Wechselbrücke: ${wb || '-'}\n` +
                 `Netto-Gewicht: ${netto}\n\n` +
                 `Mit freundlichen Grüßen\nTEXAID Darmstadt`
             );
@@ -831,6 +841,7 @@
                 `Datum/Uhrzeit: ${rec.datum} ${rec.uhrzeit}\n` +
                 `Lieferant: ${rec.lieferant}\n` +
                 `Lkw-Nr: ${rec.lkw_nr}\n` +
+                `Wechselbrücke: ${rec.wechselbruecke_nr || '-'}\n` +
                 `Brutto: ${rec.brutto} kg\n` +
                 `Tara: ${rec.tara} kg\n` +
                 `Müll: ${rec.muell || 0} kg\n` +
@@ -847,6 +858,7 @@
             const datum = document.getElementById('prev-datum').textContent;
             const lieferant = document.getElementById('lieferant').value;
             const lkw = document.getElementById('lkw_nr').value;
+            const wb = document.getElementById('wechselbruecke_nr').value;
             const muell = document.getElementById('prev-muell').textContent;
             const netto = document.getElementById('prev-netto').textContent;
 
@@ -856,6 +868,7 @@
                          `Datum: ${datum}%0A` +
                          `Lieferant: ${lieferant}%0A` +
                          `Lkw-Nr: ${lkw}%0A` +
+                         `Wechselbrücke: ${wb || '-'}%0A` +
                          `Müll: ${muell}%0A` +
                          `Netto-Gewicht: ${netto}`;
 
@@ -869,6 +882,7 @@
                          `Datum: ${rec.datum}%0A` +
                          `Lieferant: ${rec.lieferant}%0A` +
                          `Lkw-Nr: ${rec.lkw_nr}%0A` +
+                         `Wechselbrücke: ${rec.wechselbruecke_nr || '-'}%0A` +
                          `Müll: ${rec.muell || 0} kg%0A` +
                          `Netto-Gewicht: ${rec.netto} kg`;
 
@@ -881,7 +895,7 @@
                 return;
             }
 
-            const headers = ['SP_Nr', 'Datum', 'Uhrzeit', 'Wiegungsart', 'Lieferant', 'Versandort', 'Lkw_Nr', 'Brutto_kg', 'Tara_kg', 'Muell_kg', 'Netto_kg', 'Positionen_Sorte', 'Erstellt_am'];
+            const headers = ['SP_Nr', 'Datum', 'Uhrzeit', 'Wiegungsart', 'Lieferant', 'Versandort', 'Lkw_Nr', 'Wechselbruecke_Nr', 'Brutto_kg', 'Tara_kg', 'Muell_kg', 'Netto_kg', 'Positionen_Sorte', 'Erstellt_am'];
             let csvRows = [];
             csvRows.push(headers.join(';'));
 
@@ -895,6 +909,7 @@
                     `"${(item.lieferant || '').replace(/"/g, '""')}"`,
                     `"${(item.versandort || '').replace(/"/g, '""')}"`,
                     `"${(item.lkw_nr || '').replace(/"/g, '""')}"`,
+                    `"${(item.wechselbruecke_nr || '').replace(/"/g, '""')}"`,
                     `"${item.brutto || 0}"`,
                     `"${item.tara || 0}"`,
                     `"${item.muell || 0}"`,
@@ -952,7 +967,7 @@
                             <span class="text-xs font-semibold text-slate-500">${item.datum} (${item.uhrzeit} Uhr)</span>
                         </div>
                         <p class="font-bold text-slate-900 text-sm">${item.lieferant} <span class="text-xs font-normal text-slate-500">(${item.bewegung})</span></p>
-                        <p class="text-xs text-slate-600">Lkw: <span class="font-semibold">${item.lkw_nr}</span> | Müll: <span class="font-bold text-amber-700">${item.muell || 0} kg</span> | Netto: <span class="font-bold text-red-600">${item.netto} kg</span></p>
+                        <p class="text-xs text-slate-600">Lkw: <span class="font-semibold">${item.lkw_nr}</span> | WB: <span class="font-semibold">${item.wechselbruecke_nr || '-'}</span> | Müll: <span class="font-bold text-amber-700">${item.muell || 0} kg</span> | Netto: <span class="font-bold text-red-600">${item.netto} kg</span></p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
                         <button onclick="loadRecordToPreview('${item.id}')" class="bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition flex items-center space-x-1">
@@ -990,6 +1005,7 @@
             document.getElementById('lieferant').value = item.lieferant;
             document.getElementById('versandort').value = item.versandort;
             document.getElementById('lkw_nr').value = item.lkw_nr;
+            document.getElementById('wechselbruecke_nr').value = item.wechselbruecke_nr || '';
             
             positions = item.positions && item.positions.length > 0 ? [...item.positions] : [{ anzahl: 'X', sorte: 'Originalware', bemerkung: '' }];
             renderPositionTable();
@@ -1023,7 +1039,7 @@
         function clearHistory() {
             if (confirm('Möchten Sie wirklich die gesamte lokale Historie löschen?')) {
                 historyData = [];
-                localStorage.removeItem('texaid_wiegescheine_darmstadt_v4');
+                localStorage.removeItem('texaid_wiegescheine_darmstadt_v5');
                 updateHistoryBadge();
                 renderHistoryList();
                 showToast('Archiv', 'Historie wurde geleert.', 'info');
