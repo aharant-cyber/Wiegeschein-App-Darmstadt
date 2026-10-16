@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEXAID Darmstadt - Android App Anleitung & Komplettversion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-p-6 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="max-w-2xl w-full bg-slate-800 border border-slate-700 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
+        
+        <!-- Header -->
+        <div class="flex items-center space-x-4 border-b border-slate-700 pb-5">
+            <div class="bg-red-600 text-white font-extrabold px-4 py-2.5 rounded-xl text-xl tracking-tight shadow-md">
+                TEXAID
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-white">Android App Integration</h1>
+                <p class="text-xs text-red-400 font-medium">Standort Darmstadt – Digitales Wiegesystem</p>
+            </div>
+        </div>
+
+        <!-- Erklärung -->
+        <div class="space-y-4 text-sm text-slate-300">
+            <p>
+                Um diese Web-App auf Ihrem Android-Gerät wie eine native App zu nutzen (inklusive Offline-Speicher, Kamera-/Unterschriften-Support und direktem PDF-Export), können Sie die Anwendung in wenigen Sekunden als <strong>Progressive Web App (PWA)</strong> direkt auf Ihrem Android-Startbildschirm installieren:
+            </p>
+
+            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 space-y-3">
+                <h3 class="font-bold text-white text-xs uppercase tracking-wider text-red-400 flex items-center space-x-2">
+                    <i class="fa-brands fa-android text-base"></i>
+                    <span>Installation auf Android (Chrome / Firefox)</span>
+                </h3>
+                <ol class="list-decimal list-inside space-y-2 text-xs sm:text-sm text-slate-300">
+                    <li>Öffnen Sie diese Wiegeschein-App im mobilen Browser auf Ihrem Android-Smartphone.</li>
+                    <li>Tippen Sie oben rechts auf das Menü-Symbol (die drei Punkte).</li>
+                    <li>Wählen Sie den Menüpunkt <strong>„Zum Startbildschirm hinzufügen“</strong> oder <strong>„App installieren“</strong>.</li>
+                    <li>Bestätigen Sie die Installation. Danach erscheint das TEXAID-Logo direkt auf Ihrem Startbildschirm und öffnet sich als eigenständige App im Vollbildmodus!</li>
+                </ol>
+            </div>
+
+            <!-- Alternative für Entwickler / APK -->
+            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 space-y-3">
+                <h3 class="font-bold text-white text-xs uppercase tracking-wider text-red-400 flex items-center space-x-2">
+                    <i class="fa-solid fa-code text-base"></i>
+                    <span>Für die IT-Abteilung / APK-Erstellung (Cordova / WebView)</span>
+                </h3>
+                <p class="text-xs text-slate-400">
+                    Falls Sie eine native <code>.apk</code> Datei für das unternehmensweite MDM benötigen, können Sie diesen Quellcode direkt in ein Android Studio Projekt (WebView Container) oder Apache Cordova einbetten:
+                </p>
+                <div class="bg-slate-950 p-3 rounded-lg text-xs font-mono text-emerald-400 overflow-x-auto">
+                    cordova create TexaidApp com.texaid.darmstadt WiegescheinApp<br>
+                    # Kopieren Sie die optimierte HTML-Datei in /www/index.html<br>
+                    cordova build android
+                </div>
+            </div>
+        </div>
+
+        <!-- Aktions-Buttons -->
+        <div class="pt-4 flex flex-col sm:flex-row gap-3">
+            <button onclick="window.location.href='wiegeschein_app.html'" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-xl transition shadow-lg shadow-red-600/30 flex items-center justify-center space-x-2 text-sm">
+                <i class="fa-solid fa-mobile-screen-button"></i>
+                <span>Direkt zur Wiegeschein-App</span>
+            </button>
+        </div>
+
+    </div>
+
+    <footer class="mt-8 text-center text-xs text-slate-500">
+        TEXAID Collection GmbH • Darmstadt
+    </footer>
+
+</body>
+</html>
