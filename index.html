@@ -163,7 +163,7 @@
                         </div>
                     </div>
 
-                    <!-- Gewichtsangaben -->
+                    <!-- Gewichtsangaben inkl. Müll -->
                     <div class="bg-red-50/40 p-4 rounded-2xl border border-red-100 space-y-4">
                         <h3 class="text-sm font-bold text-red-900 flex items-center space-x-2">
                             <i class="fa-solid fa-scale-balanced text-red-600"></i>
@@ -357,7 +357,7 @@
                     </div>
                 </div>
 
-                <!-- Datum & Gewichte -->
+                <!-- Datum & Gewichte (inkl. Müll) -->
                 <div class="grid grid-cols-2 border border-slate-900 text-sm">
                     <div class="p-3 border-r border-slate-900 flex flex-col justify-between bg-slate-50/30">
                         <div>
@@ -466,7 +466,7 @@
 
     <!-- JavaScript Logik -->
     <script>
-        let historyData = JSON.parse(localStorage.getItem('texaid_wiegescheine_darmstadt_v3') || '[]');
+        let historyData = JSON.parse(localStorage.getItem('texaid_wiegescheine_darmstadt_v4') || '[]');
         
         function generateNextSpNr() {
             if (historyData.length === 0) return '50040';
@@ -717,8 +717,8 @@
                 bewegung: document.querySelector('input[name="bewegung"]:checked').value,
                 datum: document.getElementById('datum').value,
                 uhrzeit: document.getElementById('uhrzeit').value,
-                brutto: document.getElementById('brutto').value,
-                tara: document.getElementById('tara').value,
+                brutto: document.getElementById('brutto').value || '0',
+                tara: document.getElementById('tara').value || '0',
                 muell: document.getElementById('muell').value || '0',
                 netto: Math.max(0, bruttoVal - taraVal - muellVal),
                 lieferant: document.getElementById('lieferant').value,
@@ -730,7 +730,7 @@
             };
 
             historyData.unshift(record);
-            localStorage.setItem('texaid_wiegescheine_darmstadt_v3', JSON.stringify(historyData));
+            localStorage.setItem('texaid_wiegescheine_darmstadt_v4', JSON.stringify(historyData));
             updateHistoryBadge();
             renderHistoryList();
 
@@ -803,6 +803,7 @@
             const datum = document.getElementById('prev-datum').textContent;
             const lieferant = document.getElementById('lieferant').value;
             const lkw = document.getElementById('lkw_nr').value;
+            const muell = document.getElementById('prev-muell').textContent;
             const netto = document.getElementById('prev-netto').textContent;
 
             const subject = encodeURIComponent(`TEXAID Wiegeschein SP-Nr. ${spNr} - ${lieferant}`);
@@ -813,6 +814,7 @@
                 `Datum: ${datum}\n` +
                 `Lieferant: ${lieferant}\n` +
                 `Lkw-Nr: ${lkw}\n` +
+                `Müll: ${muell}\n` +
                 `Netto-Gewicht: ${netto}\n\n` +
                 `Mit freundlichen Grüßen\nTEXAID Darmstadt`
             );
@@ -873,7 +875,6 @@
             window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
         }
 
-        /* Excel CSV Export funktion */
         function exportToExcelCSV() {
             if (historyData.length === 0) {
                 showToast('Export nicht möglich', 'Keine Datensätze in der Historie vorhanden.', 'info');
@@ -1022,7 +1023,7 @@
         function clearHistory() {
             if (confirm('Möchten Sie wirklich die gesamte lokale Historie löschen?')) {
                 historyData = [];
-                localStorage.removeItem('texaid_wiegescheine_darmstadt_v3');
+                localStorage.removeItem('texaid_wiegescheine_darmstadt_v4');
                 updateHistoryBadge();
                 renderHistoryList();
                 showToast('Archiv', 'Historie wurde geleert.', 'info');
