@@ -44,7 +44,14 @@
                 </div>
                 <div>
                     <h1 class="font-bold text-xs sm:text-sm tracking-wide leading-tight text-slate-100">Collection GmbH</h1>
-                    <p class="text-[11px] text-red-400 font-medium">Standort Darmstadt</p>
+                    <div class="flex items-center space-x-2">
+                        <p class="text-[11px] text-red-400 font-medium">Standort Darmstadt</p>
+                        <!-- Cloud Status Indicator -->
+                        <span id="cloud-status-badge" class="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 border border-slate-700">
+                            <i class="fa-solid fa-arrows-rotate animate-spin text-[9px]"></i>
+                            <span id="cloud-status-text">Verbinde Cloud...</span>
+                        </span>
+                    </div>
                 </div>
             </div>
             <div class="flex items-center space-x-2">
@@ -444,10 +451,10 @@
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-slate-100 gap-3">
                     <div>
                         <h2 class="text-lg font-bold text-slate-900 flex items-center space-x-2">
-                            <i class="fa-solid fa-box-archive text-red-600"></i>
-                            <span>Gespeicherte Wiegungen (Darmstadt)</span>
+                            <i class="fa-solid fa-cloud-arrow-down text-red-600"></i>
+                            <span>Gespeicherte Wiegungen (Live Cloud-Sync)</span>
                         </h2>
-                        <p class="text-xs text-slate-500">Alle Datensätze auf dem Gerät im lokalen Speicher</p>
+                        <p class="text-xs text-slate-500">Automatische Echtzeit-Synchronisierung über alle Geräte</p>
                     </div>
                     
                     <div class="flex flex-wrap gap-2 w-full sm:w-auto">
@@ -455,7 +462,6 @@
                             <i class="fa-solid fa-file-excel text-sm"></i>
                             <span>Excel-Export (.CSV)</span>
                         </button>
-                        <button onclick="clearHistory()" class="text-xs text-red-600 hover:text-red-800 font-semibold px-2 py-2">Historie leeren</button>
                     </div>
                 </div>
 
@@ -472,16 +478,117 @@
         TEXAID Collection GmbH • Digitales Wiegesystem Darmstadt
     </footer>
 
+    <!-- Firebase Firebase Client SDK JS -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'texaid-darmstadt-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "AIzaSyCF0JyGi4IcfmBXA-35glxBTOnuuwEXOvg",
+            authDomain: "wiegescheine-darmstadt.firebaseapp.com",
+            projectId: "wiegescheine-darmstadt",
+            storageBucket: "wiegescheine-darmstadt.firebasestorage.app",
+            messagingSenderId: "226255890782",
+            appId: "1:226255890782:web:10695dfbcfcdd9538247cf"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+
+        // Cloud-Synchronisierung initialisieren
+        window.cloudSync = {
+            db,
+            appId,
+            saveRecord: async (record) => {
+                if (!currentUser) {
+                    console.warn("User noch nicht authentifiziert.");
+                    return;
+                }
+                try {
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'wiegescheine', record.id);
+                    await setDoc(docRef, record);
+                    console.log("Wiegung erfolgreich in Cloud gespeichert:", record.id);
+                } catch (e) {
+                    console.error("Fehler beim Cloud-Speichern:", e);
+                }
+            }
+        };
+
+        async function initCloud() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Auth-Fehler:", err);
+            }
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    const statusBadge = document.getElementById('cloud-status-badge');
+                    const statusText = document.getElementById('cloud-status-text');
+                    if (statusBadge && statusText) {
+                        statusBadge.className = "bg-emerald-950 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-800";
+                        statusText.textContent = "Cloud Synchronisiert";
+                        statusBadge.querySelector('i').className = "fa-solid fa-cloud text-[9px]";
+                    }
+
+                    // Echtzeit-Überwachung der Wiegungen über den standardisierten Pfad
+                    const publicCol = collection(db, 'artifacts', appId, 'public', 'data', 'wiegescheine');
+                    onSnapshot(publicCol, (snapshot) => {
+                        const cloudRecords = [];
+                        snapshot.forEach((doc) => {
+                            cloudRecords.push(doc.data());
+                        });
+
+                        // Sortiere nach ID / Erstellungsdatum absteigend
+                        cloudRecords.sort((a, b) => (b.id > a.id ? 1 : -1));
+
+                        if (cloudRecords.length > 0) {
+                            window.historyData = cloudRecords;
+                            localStorage.setItem('texaid_wiegescheine_darmstadt_v5', JSON.stringify(cloudRecords));
+                            if (typeof window.updateHistoryBadge === 'function') window.updateHistoryBadge();
+                            if (typeof window.renderHistoryList === 'function') window.renderHistoryList();
+                            if (typeof window.updateSpNrFromCloud === 'function') window.updateSpNrFromCloud();
+                        }
+                    }, (error) => {
+                        console.error("Firestore Snapshot Fehler:", error);
+                    });
+                }
+            });
+        }
+
+        initCloud();
+    </script>
+
     <!-- JavaScript Logik -->
     <script>
         let historyData = JSON.parse(localStorage.getItem('texaid_wiegescheine_darmstadt_v5') || '[]');
+        window.historyData = historyData;
         
         function generateNextSpNr() {
-            if (historyData.length === 0) return '50040';
-            const numbers = historyData.map(item => parseInt(item.sp_nr)).filter(n => !isNaN(n));
+            const data = window.historyData || historyData;
+            if (data.length === 0) return '50040';
+            const numbers = data.map(item => parseInt(item.sp_nr)).filter(n => !isNaN(n));
             const max = numbers.length > 0 ? Math.max(...numbers) : 50039;
             return (max + 1).toString();
         }
+
+        function updateSpNrFromCloud() {
+            const spInput = document.getElementById('sp_nr');
+            if (spInput) {
+                spInput.value = generateNextSpNr();
+            }
+        }
+        window.updateSpNrFromCloud = updateSpNrFromCloud;
 
         const canvas = document.getElementById('signature-pad');
         const ctx = canvas.getContext('2d');
@@ -721,7 +828,7 @@
             const muellVal = parseFloat(document.getElementById('muell').value) || 0;
 
             const record = {
-                id: 'WS-' + Date.now().toString().slice(-6),
+                id: 'WS-' + Date.now().toString().slice(-8),
                 sp_nr: document.getElementById('sp_nr').value,
                 bewegung: document.querySelector('input[name="bewegung"]:checked').value,
                 datum: document.getElementById('datum').value,
@@ -739,8 +846,16 @@
                 createdAt: new Date().toLocaleString()
             };
 
-            historyData.unshift(record);
-            localStorage.setItem('texaid_wiegescheine_darmstadt_v5', JSON.stringify(historyData));
+            const localList = window.historyData || historyData;
+            localList.unshift(record);
+            window.historyData = localList;
+            localStorage.setItem('texaid_wiegescheine_darmstadt_v5', JSON.stringify(localList));
+            
+            // In Cloud hochladen
+            if (window.cloudSync && window.cloudSync.saveRecord) {
+                window.cloudSync.saveRecord(record);
+            }
+
             updateHistoryBadge();
             renderHistoryList();
 
@@ -775,7 +890,7 @@
 
         function handlePdfNo() {
             document.getElementById('pdf-modal').classList.add('hidden');
-            showToast('Gespeichert', 'Wiegung wurde im lokalen Archiv gesichert.', 'success');
+            showToast('Gespeichert', 'Wiegung wurde in der Cloud & im Archiv gesichert.', 'success');
             resetFormFull();
             switchTab('history');
         }
@@ -890,7 +1005,8 @@
         }
 
         function exportToExcelCSV() {
-            if (historyData.length === 0) {
+            const dataList = window.historyData || historyData;
+            if (dataList.length === 0) {
                 showToast('Export nicht möglich', 'Keine Datensätze in der Historie vorhanden.', 'info');
                 return;
             }
@@ -899,7 +1015,7 @@
             let csvRows = [];
             csvRows.push(headers.join(';'));
 
-            historyData.forEach(item => {
+            dataList.forEach(item => {
                 const posDetails = item.positions ? item.positions.map(p => `${p.anzahl}x ${p.sorte} (${p.bemerkung})`).join(' | ') : '';
                 const row = [
                     `"${item.sp_nr || ''}"`,
@@ -936,17 +1052,20 @@
 
         function updateHistoryBadge() {
             const badge = document.getElementById('history-badge');
-            if (historyData.length > 0) {
-                badge.textContent = historyData.length;
+            const dataList = window.historyData || historyData;
+            if (dataList.length > 0) {
+                badge.textContent = dataList.length;
                 badge.classList.remove('hidden');
             } else {
                 badge.classList.add('hidden');
             }
         }
+        window.updateHistoryBadge = updateHistoryBadge;
 
         function renderHistoryList() {
             const listContainer = document.getElementById('history-list');
-            if (historyData.length === 0) {
+            const dataList = window.historyData || historyData;
+            if (dataList.length === 0) {
                 listContainer.innerHTML = `
                     <div class="text-center py-10 text-slate-400 space-y-2">
                         <i class="fa-solid fa-folder-open text-3xl"></i>
@@ -957,7 +1076,7 @@
             }
 
             listContainer.innerHTML = '';
-            historyData.forEach((item) => {
+            dataList.forEach((item) => {
                 const div = document.createElement('div');
                 div.className = 'bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:border-red-300 transition';
                 div.innerHTML = `
@@ -965,6 +1084,7 @@
                         <div class="flex items-center space-x-2">
                             <span class="bg-red-100 text-red-800 text-xs font-black px-2 py-0.5 rounded">SP: ${item.sp_nr}</span>
                             <span class="text-xs font-semibold text-slate-500">${item.datum} (${item.uhrzeit} Uhr)</span>
+                            <span class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-medium"><i class="fa-solid fa-cloud text-[9px]"></i> Cloud Sync</span>
                         </div>
                         <p class="font-bold text-slate-900 text-sm">${item.lieferant} <span class="text-xs font-normal text-slate-500">(${item.bewegung})</span></p>
                         <p class="text-xs text-slate-600">Lkw: <span class="font-semibold">${item.lkw_nr}</span> | WB: <span class="font-semibold">${item.wechselbruecke_nr || '-'}</span> | Müll: <span class="font-bold text-amber-700">${item.muell || 0} kg</span> | Netto: <span class="font-bold text-red-600">${item.netto} kg</span></p>
@@ -987,9 +1107,11 @@
                 listContainer.appendChild(div);
             });
         }
+        window.renderHistoryList = renderHistoryList;
 
         function loadRecordToPreview(id) {
-            const item = historyData.find(r => r.id === id);
+            const dataList = window.historyData || historyData;
+            const item = dataList.find(r => r.id === id);
             if (!item) return;
 
             document.getElementById('sp_nr').value = item.sp_nr;
@@ -1027,23 +1149,15 @@
         }
 
         function sendMailRecordFromHistory(id) {
-            const item = historyData.find(r => r.id === id);
+            const dataList = window.historyData || historyData;
+            const item = dataList.find(r => r.id === id);
             if (item) sendMailRecord(item);
         }
 
         function shareWhatsAppRecordFromHistory(id) {
-            const item = historyData.find(r => r.id === id);
+            const dataList = window.historyData || historyData;
+            const item = dataList.find(r => r.id === id);
             if (item) shareWhatsAppRecord(item);
-        }
-
-        function clearHistory() {
-            if (confirm('Möchten Sie wirklich die gesamte lokale Historie löschen?')) {
-                historyData = [];
-                localStorage.removeItem('texaid_wiegescheine_darmstadt_v5');
-                updateHistoryBadge();
-                renderHistoryList();
-                showToast('Archiv', 'Historie wurde geleert.', 'info');
-            }
         }
 
         function showToast(title, msg, type = 'success') {
