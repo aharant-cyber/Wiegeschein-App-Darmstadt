@@ -48,7 +48,7 @@
                         <p class="text-[11px] text-red-400 font-medium">Standort Darmstadt</p>
                         <!-- Cloud Status Indicator -->
                         <span id="cloud-status-badge" class="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 border border-slate-700">
-                            <i class="fa-solid fa-arrows-rotate animate-spin text-[9px]"></i>
+                            <i id="cloud-status-icon" class="fa-solid fa-arrows-rotate animate-spin text-[9px]"></i>
                             <span id="cloud-status-text">Verbinde Cloud...</span>
                         </span>
                     </div>
@@ -494,19 +494,54 @@
             appId: "1:226255890782:web:10695dfbcfcdd9538247cf"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        let app, auth, db;
+        let isConnected = false;
+
+        // Fallback: Wenn nach 3 Sekunden keine Firebase-Verbindung aufgebaut ist, schalte auf Lokaler Modus um
+        const connectionTimeout = setTimeout(() => {
+            if (!isConnected) {
+                setCloudStatus("Lokal aktiv (Offline-Modus)", "offline");
+            }
+        }, 3000);
+
+        function setCloudStatus(text, type) {
+            const statusBadge = document.getElementById('cloud-status-badge');
+            const statusText = document.getElementById('cloud-status-text');
+            const statusIcon = document.getElementById('cloud-status-icon');
+            
+            if (!statusBadge || !statusText || !statusIcon) return;
+
+            if (type === 'online') {
+                statusBadge.className = "bg-emerald-950 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-800";
+                statusText.textContent = text;
+                statusIcon.className = "fa-solid fa-cloud text-[9px]";
+            } else if (type === 'offline') {
+                statusBadge.className = "bg-amber-950 text-amber-400 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 border border-amber-800";
+                statusText.textContent = text;
+                statusIcon.className = "fa-solid fa-database text-[9px]";
+            } else {
+                statusBadge.className = "bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 border border-slate-700";
+                statusText.textContent = text;
+                statusIcon.className = "fa-solid fa-arrows-rotate animate-spin text-[9px]";
+            }
+        }
+
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } catch (e) {
+            console.warn("Firebase Init Fehler, nutze LocalStorage Fallback:", e);
+            setCloudStatus("Lokal aktiv (Offline-Modus)", "offline");
+        }
 
         let currentUser = null;
 
         // Cloud-Synchronisierung initialisieren
         window.cloudSync = {
-            db,
-            appId,
             saveRecord: async (record) => {
-                if (!currentUser) {
-                    console.warn("User noch nicht authentifiziert.");
+                if (!db || !currentUser) {
+                    console.log("Speichere lokal in Browser-Datenbank.");
                     return;
                 }
                 try {
@@ -520,6 +555,7 @@
         };
 
         async function initCloud() {
+            if (!auth) return;
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
@@ -527,19 +563,17 @@
                     await signInAnonymously(auth);
                 }
             } catch (err) {
-                console.error("Auth-Fehler:", err);
+                console.warn("Auth-Fehler (Fallback auf Lokal):", err);
+                setCloudStatus("Lokal aktiv (Offline-Modus)", "offline");
+                return;
             }
 
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     currentUser = user;
-                    const statusBadge = document.getElementById('cloud-status-badge');
-                    const statusText = document.getElementById('cloud-status-text');
-                    if (statusBadge && statusText) {
-                        statusBadge.className = "bg-emerald-950 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-800";
-                        statusText.textContent = "Cloud Synchronisiert";
-                        statusBadge.querySelector('i').className = "fa-solid fa-cloud text-[9px]";
-                    }
+                    isConnected = true;
+                    clearTimeout(connectionTimeout);
+                    setCloudStatus("Cloud Synchronisiert", "online");
 
                     // Echtzeit-Überwachung der Wiegungen über den standardisierten Pfad
                     const publicCol = collection(db, 'artifacts', appId, 'public', 'data', 'wiegescheine');
@@ -560,7 +594,8 @@
                             if (typeof window.updateSpNrFromCloud === 'function') window.updateSpNrFromCloud();
                         }
                     }, (error) => {
-                        console.error("Firestore Snapshot Fehler:", error);
+                        console.warn("Firestore Snapshot Fehler:", error);
+                        setCloudStatus("Lokal aktiv (Offline-Modus)", "offline");
                     });
                 }
             });
